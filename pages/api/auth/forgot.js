@@ -1,6 +1,7 @@
 import connectDB from "../../../backend-helper/connectDB";
 import dbConfig from "../../../backend-helper/dbConfig";
 import queryDB from "../../../backend-helper/queryDB";
+import StatusCodeMsg from "../../../backend-helper/StatusCodeMsg";
 
 
 export default async function forgot(req, res){
@@ -8,7 +9,10 @@ export default async function forgot(req, res){
         const { email } = req.body;
 
         if(!email){
-            res.send("Incomplete Call. Nothing happens");
+            res.status(200).json({
+                code: 300,
+                msg: StatusCodeMsg(300)
+            })
             return;
         }
 
@@ -20,15 +24,30 @@ export default async function forgot(req, res){
             const update = await queryDB(con, "UPDATE `cc-games`.auth SET password=null, lastLogin=null, code=\"" + code + "\" WHERE email=\"" + email + "\"").catch(e => {console.log(e)});
         
             if(update.affectedRows == 1){
-                res.send(code);
+                res.status(200).json({
+                    code: 200,
+                    msg: StatusCodeMsg(200)
+                })
                 return;
             } 
-            res.send("Something went wrong");
+            
+            res.status(200).json({
+                code: 305,
+                msg: StatusCodeMsg(305)
+            })
             return;
         }
 
-        res.send("E-Mail not found");
+        res.status(200).json({
+            code: 305,
+            msg: StatusCodeMsg(305)
+        })
         return;
+    } else {
+        res.status(200).json({
+            code: 400,
+            msg: StatusCodeMsg(400)   
+        })
     }
 }
 

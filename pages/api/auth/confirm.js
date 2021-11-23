@@ -1,6 +1,8 @@
 import connectDB from "../../../backend-helper/connectDB";
 import dbConfig from "../../../backend-helper/dbConfig";
 import queryDB from "../../../backend-helper/queryDB";
+import StatusCodeMsg from "../../../backend-helper/StatusCodeMsg";
+import cookie from 'cookie';
 
 const { scryptSync, randomBytes, timingSafeEqual } = require('crypto');
 
@@ -9,12 +11,18 @@ export default async function confirm(req, res){
         const { email, code, password, passwordConfirm } = req.body;
 
         if(!email || !code || !password || !passwordConfirm){
-            res.send("Incomplete Call. Nothing changed");
+            res.status(200).json({
+                code: 300,
+                msg: StatusCodeMsg(300)
+            })
             return;
         }
 
         if(password != passwordConfirm){
-            res.send("Passwords do not match! Nothing changed");
+            res.status(200).json({
+                code: 305, 
+                msg: StatusCodeMsg(305)
+            })
             return;
         }
 
@@ -30,17 +38,40 @@ export default async function confirm(req, res){
             //Save that to DB
             const update = await queryDB(con, "UPDATE `cc-games`.auth SET password = \"" + hashedPassword + "\" , session=\"" + sessionId + "\" , code = null WHERE email = \"" + email + "\"").catch(e => {console.log(e)});
             if(update.affectedRows == 1){
-                res.send("Success: " + sessionId);
+                res.setHeader('Set-Cookie', cookie.serialize('s_id', sessionId, {
+                    httpOnly: false,
+                    secure: process.env.NODE_ENV !== "development",
+                    maxAge: 3600,
+                    sameSite: 'strict',
+                    path: "/"
+                }));
+                
+                res.status(200).json({
+                    code: 200,
+                    msg: StatusCodeMsg(200),
+                    email: email
+                })
                 return;
             }
 
-            res.send("SOMETHING WENT WRONG");
+            res.status(200).json({
+                code: 305,
+                msg: StatusCodeMsg(305)
+            })
             return;
 
         }
 
-        res.send("No user with that code found");
+        res.status(200).json({
+            code: 305,
+            msg: StatusCodeMsg(305)
+        })
         return;
+    } else {
+        res.status(200).json({
+            code: 400,
+            msg: StatusCodeMsg(400)
+        })
     }
 }
 

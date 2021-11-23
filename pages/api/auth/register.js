@@ -1,13 +1,17 @@
 import connectDB from "../../../backend-helper/connectDB";
 import dbConfig from "../../../backend-helper/dbConfig";
 import queryDB from "../../../backend-helper/queryDB";
+import StatusCodeMsg from "../../../backend-helper/StatusCodeMsg";
 
 export default async function register(req, res) {
     if(req.method == "POST"){
         const { email } = req.body;
 
         if(!email){
-            res.send("No Email Provided");
+            res.status(200).json({
+                code: 300,
+                msg: StatusCodeMsg(300)
+            })
         }
 
         const con = await connectDB(dbConfig).catch(e => {console.log(e)});
@@ -20,15 +24,30 @@ export default async function register(req, res) {
             const insert = await queryDB(con, "INSERT INTO `cc-games`.auth (email, code, lastLogin) VALUES ('" + email + "', '" + code + "', null)").catch(e => { console.log(e)});
             
             if(insert.affectedRows == 1){
-                res.send(code);
+                res.status(200).json({
+                    code: 200,
+                    msg: StatusCodeMsg(200)
+                })
                 return;
             }
 
-            res.send("Something went wrong");
+            res.status(200).json({
+                code: 305, 
+                msg: StatusCodeMsg(305)
+            })
             return;
         } 
-        res.send("User already registered. Did you mean forget Password ?");
+        
+        res.status(200).json({
+            code: 305,
+            msg: StatusCodeMsg(305)
+        })
         return;
+    } else {
+        res.status(200).json({
+            code: 400,
+            msg: StatusCodeMsg(400)
+        })
     }
 }
 

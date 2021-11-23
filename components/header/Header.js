@@ -1,25 +1,26 @@
 import React from 'react';
+import Context from '../../res/Context';
 import Button from '../usefull/Button';
 
 export default function Header({isLoggedIn}){
-    
     const [loginModalOpen, setLoginModalOpen] = React.useState(false);
     const [registerModalOpen, setRegisterModalOpen] = React.useState(false);
 
+    const {logout, login_with_email, login_register, get_email} = React.useContext(Context);
 
     return(
         <div className="flex h-16 bg-gray-300 justify-between p-4">
             <Logo></Logo>
             
             {isLoggedIn? 
-                <Profile />
+                <Profile get_email={get_email} logout={logout}/>
                 :
                 <LoginRegister setLoginModalOpen={setLoginModalOpen} setRegisterModalOpen={setRegisterModalOpen}/>
             }
 
-            {loginModalOpen? <LoginModal setModalOpen={setLoginModalOpen} /> : null}
+            {loginModalOpen? <LoginModal setModalOpen={setLoginModalOpen} loginCallback={login_with_email} /> : null}
  
-            {registerModalOpen? <RegisterModal setModalOpen={setRegisterModalOpen} /> : null}
+            {registerModalOpen? <RegisterModal setModalOpen={setRegisterModalOpen} registerCallback={login_register} /> : null}
 
         </div>
     )
@@ -41,20 +42,44 @@ const LoginRegister = ({setLoginModalOpen, setRegisterModalOpen}) => {
     )
 }
 
-const Profile = () => {
+const Profile = ({get_email, logout}) => {
+    const doLogout = async() => {
+        let email = get_email();
+
+        let response = await fetch('/api/auth/logout', {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: email,
+            })
+        });
+
+        response = await response.json();
+
+        if(response.code == 200){
+            logout();
+        }
+    }
+    
     return (
-        <div>
-            <p>Profile</p>
+        <div className="space-x-2">
+            <p className="inline-block">Profile</p>
+
+            <Button type="header" callback={() => doLogout()}>Logout</Button>
         </div>
     )
 }
 
-const LoginModal = ({setModalOpen}) => {
+const LoginModal = ({setModalOpen, loginCallback}) => {
     const [errorMessage, setErrorMessage] = React.useState("");
     
     const [state, setState] = React.useState({
         username: "testuser@cc-games.com",
         password: "123456789",
+        usernameClassList: "",
+        passwordClassList: "",
     })
 
     const modalClickHandler = (event) => {
@@ -66,9 +91,24 @@ const LoginModal = ({setModalOpen}) => {
     }
 
     const doLoginCall = async() => {
+        let complete = true;
+
+        if(state.username.length == 0){
+            setState({...state, usernameClassList: "border-0 border-b-2 border-red-500"});
+            complete = false;
+        }
+        
+        if(state.password.length == 0){
+            setState({...state, passwordClassList: "border-0 border-b-2 border-red-500"});
+            complete = false;
+        }
+
+        if(!complete)
+            return;
+
         let payload = {
             email: state.username,
-            password: state.password
+            password: state.password,
         };
 
         let response = await fetch('/api/auth/login', {
@@ -79,7 +119,20 @@ const LoginModal = ({setModalOpen}) => {
             body: JSON.stringify(payload),
         });
 
-        console.log(await (await response.blob()).text());
+        response = await response.json();
+
+        if(response.code == 200){
+            loginCallback(response.email);
+            setModalOpen(false);
+        } else {
+            setErrorMessage("E-Mail / Password do not match");
+
+            if(response.code == 300){
+                setErrorMessage("E-Mail / Password missing");
+            }
+        }
+
+        
     }
     
     
@@ -96,13 +149,26 @@ const LoginModal = ({setModalOpen}) => {
 
                 <div className="p-4">
                     <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">Username</label>
-                        <input value={state.username} onChange={(event) => {setState({...state, username: event.target.value})}} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="username" type="text" placeholder="Username"></input>
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="headerLoginUsername">Username</label>
+                        <input 
+                            value={state.username} 
+                            onChange={(event) => {setState({...state, username: event.target.value, usernameClassList: ""})}} 
+                            className={("shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline " + state.usernameClassList)} 
+                            id="headerLoginUsername" 
+                            type="text" 
+                            placeholder="Username">
+                        </input>
                     </div>
 
                     <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">Password</label>
-                        <input value={state.password} onChange={(event) => {setState({...state, password: event.target.value})}}  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="password" type="password" placeholder="Password"></input>
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="headerLoginPassword">Password</label>
+                        <input 
+                            value={state.password} 
+                            onChange={(event) => {setState({...state, password: event.target.value, passwordClassList: ""})}}  className={("shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline " + state.passwordClassList)} 
+                            id="headerLoginPassword" 
+                            type="password" 
+                            placeholder="Password">
+                        </input>
                         <p className="text-red-500 text-s italic text-center mt-2">{errorMessage}</p>
                     </div>
 
@@ -116,7 +182,7 @@ const LoginModal = ({setModalOpen}) => {
     )
 }
 
-const RegisterModal = ({setModalOpen}) => {
+const RegisterModal = ({setModalOpen, registerCallback, isFullOpen}) => {
     const modalClickHandler = (event) => {
         const LoginModal = document.getElementById("RegisterModal");
 
@@ -124,22 +190,177 @@ const RegisterModal = ({setModalOpen}) => {
             setModalOpen(false);
         }
     }
+
+    const[errorMessage, setErrorMessage] = React.useState("");
+
+    const [state, setState] = React.useState({
+        isFullOpen: isFullOpen || false,
+        username: "",
+        code: "",
+        password: "",
+        passwordConfirm: "",
+
+        usernameClassList: "",
+        codeClassList: "",
+        passwordClassList: "",
+        passwordConfirmClassList: "",
+    });
     
+    const doRegisterCall = async () => {
+        if(state.isFullOpen){
+            //Do confirm Call
+            let complete = true;
+
+            if(state.username.length == 0){
+                setState({...state, usernameClassList: "border-0 border-b-2 border-red-500"});
+                complete = false;
+            }
+
+            if(state.code.length == 0){
+                setState({...state, codeClassList: "border-0 border-b-2 border-red-500"});
+                complete = false;
+            }
+
+            if(state.password.length == 0){
+                setState({...state, passwordClassList: "border-0 border-b-2 border-red-500"});
+                complete = false;
+            }
+
+            if(state.passwordConfirm.length == 0){
+                setState({...state, passwordConfirmClassList: "border-0 border-b-2 border-red-500"});
+                complete = false;
+            }
+
+            if(!complete)
+                return;
+
+            let payload = {
+                email: state.username,
+                code: state.code,
+                password: state.password,
+                passwordConfirm: state.passwordConfirm,
+            };
+
+            let response = await fetch('/api/auth/confirm', {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            response = await response.json();
+
+            if(response.code == 200){
+                registerCallback(response.email);
+                setModalOpen(false);
+            } else {
+                setErrorMessage(response.msg);
+            }
+        } else {
+            //Do Register Call
+            if(state.username.length == 0){
+                setState({...state, usernameClassList: "border-0 border-b-2 border-red-500"})
+                return;
+            }
+
+            let response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: state.username
+                })
+            })
+
+            response = await response.json();
+
+            if(response.code == 200){
+                setState({...state, isFullOpen: true});
+            } else {
+                setErrorMessage(response.msg);
+            }
+        }
+    }
+
     
     return(
         <div 
             className="w-screen h-screen bg-black bg-opacity-40 absolute top-0 left-0 flex justify-center items-center"
             onClick={(event) => modalClickHandler(event)}
         >
-            <div className="w-40 h-40 bg-white" id="RegisterModal">
+            <div className="bg-white rounded-md" id="RegisterModal">
 
-                <div className="w-full bg-red-700 text-center text-white py-1">
-                    <p>Register</p>
+            <div className="w-full bg-red-700 text-center text-white py-1 rounded-t-md shadow-md">
+                    <p className="font-bold text-2xl pb-2">Register</p>
                 </div>
 
-                <div>
+                <div className="p-4">
+                    <div className="mb-4">
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="headerRegisterUsername">Username</label>
+                        <input 
+                            value={state.username} 
+                            onChange={(event) => {setState({...state, username: event.target.value, usernameClassList: ""})}} 
+                            className={("shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline " + state.usernameClassList)} 
+                            id="headeRegisterUsername" 
+                            type="text" 
+                            placeholder="Username">
+                        </input>
+                    </div>
                     
+                    {state.isFullOpen? 
+                    <>
+                        <div className="mb-4">
+                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="headerRegisterCode">Code</label>
+                            <input
+                                value={state.code}
+                                className={("shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline " + state.usernameClassList)}   
+                                onChange={(event) => {setState({...state, code: event.target.value, codeClassList: ""})}}
+                                id="headerRegisterCode"
+                                type="text"
+                                placeholder="Code"
+                                maxLength={6}
+                            >
+                            </input>
+                        </div>
 
+                        <div className="mb-4">
+                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="headerRegisterPassword">Password</label>
+                            <input
+                                value={state.password}
+                                className={("shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline " + state.usernameClassList)}   
+                                onChange={(event) => {setState({...state, password: event.target.value, passwordClassList: ""})}}
+                                id="headerRegisterPassword"
+                                type="password"
+                                placeholder="Password"
+                            >
+                            </input>
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="headerRegisterPasswordConfirm">Password Confirm</label>
+                            <input
+                                value={state.passwordConfirm}
+                                className={("shadow appearance-none border rounded w-full py-2 px-3 te-gray-700 leading-tight focus:outline-none focus:shadow-outline " + state.usernameClassList)}   
+                                onChange={(event) => {setState({...state, passwordConfirm: event.target.value, passwordConfirmClassList: ""})}}
+                                id="headerRegisterPasswordConfirm"
+                                type="password"
+                                placeholder="Password Confirm"
+                            >
+                            </input>
+                        </div>
+                    </>
+                    : null}
+
+                    <div className="mb-4">
+                        <p className="text-red-500 text-s italic text-center mt-2">{errorMessage}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <Button type="header" callback={() => {doRegisterCall()}}>Register</Button>
+                        <a onClick={() => {setState({...state, isFullOpen: !state.isFullOpen})}} className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800" href="#">{state.isFullOpen? "New Register" : "Confirm Register"}</a>
+                    </div>
  
                 </div>
 
