@@ -1,9 +1,10 @@
 import connectDB from "../../../backend-helper/connectDB";
-import dbConfig from "../../../backend-helper/dbConfig";
+import dbConfig, { user } from "../../../backend-helper/dbConfig";
 import queryDB from "../../../backend-helper/queryDB";
 
 import cookie from 'cookie';
 import StatusCodeMsg from "../../../backend-helper/StatusCodeMsg";
+import { createSessionId } from "../../../backend-helper/generateCodes";
 
 const { scryptSync, randomBytes, timingSafeEqual } = require('crypto');
 
@@ -30,17 +31,29 @@ export default async function login(req, res) {
             const match = timingSafeEqual(hashedBuffer, keyBuffer);
 
             if(match){
-                const sessionId = randomBytes(60).toString('hex');
+                const sessionId = await createSessionId(con);
                 const update = await queryDB(con, "UPDATE `cc-games`.auth SET session=\"" + sessionId + "\" WHERE email=\"" + email + "\"").catch(e => {console.log(e)});
- 
-                res.setHeader('Set-Cookie', cookie.serialize('s_id', sessionId, {
-                    httpOnly: false,
-                    secure: process.env.NODE_ENV !== "development",
-                    maxAge: 3600,
-                    sameSite: 'strict',
-                    path: "/",
-                }));
+                let userId = await queryDB(con, "SELECT u_id FROM `cc-games`.users WHERE email=\"" + email + "\"").catch(e => {console.log(e)});
+                userId = userId[0].u_id;
 
+                res.setHeader('Set-Cookie', [
+                    cookie.serialize('s_id', sessionId, {
+                        httpOnly: true,
+                        secure: process.env.NODE_ENV !== "development",
+                        maxAge: 3600,
+                        sameSite: 'strict',
+                        path: "/",
+                    })
+                    ,
+                    cookie.serialize('u_id', userId, {
+                        httpOnly: false,
+                        secure: process.env.NODE_ENV !== "development",
+                        maxAge: 3600,
+                        sameSite: 'strict',
+                        path: "/"
+                    })
+                ]);
+                
                 res.status(200).json({
                     code: 200,
                     msg: StatusCodeMsg(200),

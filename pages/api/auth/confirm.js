@@ -3,6 +3,7 @@ import dbConfig from "../../../backend-helper/dbConfig";
 import queryDB from "../../../backend-helper/queryDB";
 import StatusCodeMsg from "../../../backend-helper/StatusCodeMsg";
 import cookie from 'cookie';
+import { createSessionId, createUserId } from "../../../backend-helper/generateCodes";
 
 const { scryptSync, randomBytes, timingSafeEqual } = require('crypto');
 
@@ -33,18 +34,33 @@ export default async function confirm(req, res){
         if(query.length == 1){
             //Hash password
             let hashedPassword = hashPassword(password);
-            const sessionId = randomBytes(60).toString('hex');
+            const sessionId = await createSessionId(con);
+            const userId = await createUserId(con);
 
             //Save that to DB
             const update = await queryDB(con, "UPDATE `cc-games`.auth SET password = \"" + hashedPassword + "\" , session=\"" + sessionId + "\" , code = null WHERE email = \"" + email + "\"").catch(e => {console.log(e)});
-            if(update.affectedRows == 1){
-                res.setHeader('Set-Cookie', cookie.serialize('s_id', sessionId, {
-                    httpOnly: false,
-                    secure: process.env.NODE_ENV !== "development",
-                    maxAge: 3600,
-                    sameSite: 'strict',
-                    path: "/"
-                }));
+            const insert = await queryDB(con, "INSERT INTO `cc-games`.users (email, u_id) VALUES (\"" + email + "\" ,  \"" + userId + "\")").catch(e => {console.log(e)});
+            
+            if(update.affectedRows == 1 && insert.affectedRows == 1){
+                
+                
+                res.setHeader('Set-Cookie', [
+                    cookie.serialize('s_id', sessionId, {
+                        httpOnly: true,
+                        secure: process.env.NODE_ENV !== "development",
+                        maxAge: 3600,
+                        sameSite: 'strict',
+                        path: "/"
+                    })
+                    ,
+                    cookie.serialize('u_id', userId, {
+                        httpOnly: false,
+                        secure: process.env.NODE_ENV !== "development",
+                        maxAge: 3600,
+                        sameSite: 'strict',
+                        path: "/"
+                    })
+                ]);
                 
                 res.status(200).json({
                     code: 200,

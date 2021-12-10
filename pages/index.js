@@ -1,68 +1,71 @@
 /*
-TODO: 
-Make sure every SID is unique !! -> extract ID generation into seperate file
+TODO:
+- Create all sockets callbacks
+- Create a beautiful UI for the lobbys
+
+- Rewrite the whole socket Idea:
+- One socket per user -> UserSocket.
+  -> The socket has events for:
+    -> the user (dm, invitations, etc)
+    -> lobby (msg, join, dc)
+    -> ingame
+
+  
 */
+import { useRouter } from 'next/router'
 
 import Head from 'next/head'
 import Header from '../components/header/Header'
+import NavHeader from '../components/NavHeader/NavHeader';
 import React from 'react';
-import { useCookies } from 'react-cookie';
 import Context from '../res/Context';
+import Button from '../components/usefull/Button';
+import { io } from 'socket.io-client';
 
 export default function Home() {
-  //Only Useable for cookie Loading onLoad
-  const [cookies, setCookie, removeCookie] = useCookies(['s_id']);
+  const router = useRouter();
+  
+  const { logout, login_with_email, is_logged_in, set_socket } = React.useContext(Context);
 
-  React.useState(() => {
-    const validateSid = async() => {
-      //Load E-Mail from Storage
-      let email = "testuser@cc-games.com";
+  
 
-      let response = await fetch('/api/auth/validateSession', {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: email
-        })
-      });
 
-      response = await response.json();
-      console.log(response);
+  const lobbyCallback = async () => {
+    let response = await fetch('/api/lobby/createLobby');
+    response = await response.json();
 
-      if(response.code != 200){
-        //Email and SID not valid
-        removeCookie('s_id');
-      } else {
-        dispatch({type: 'SET_LOGIN_WITH_COOKIE', payload: email});
-      }
+    if(response.code == 200){
+      
+      router.push("/lobby/" + response.lobbyCode);
+    }
+  }
+
+  const [lobbyCode, setLobbyCode] = React.useState("");
+
+  const lobbyJoinCallback = async () => {
+    if(lobbyCode.length != 6){
+      alert("Lobby Code not 6 Digits !");
+      return;
     }
 
-    if(cookies.s_id){
-      validateSid();
-    }    
+    let response = await fetch('/api/lobby/joinLobby', {
+      method:"POST",
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body:JSON.stringify({
+        lobbyCode: lobbyCode
+      })
+    });
+  
+    response = await response.json();
 
-    
-  }, []);
+    if(response.code == 200){
+      router.push('/lobby/' + response.lobbyCode);
+    }
+  
+  }
 
-
-  const [state, dispatch] = React.useReducer(reducer, {
-    //Initial State
-    isLoggedIn: false,
-    email: null,
-
-
-
-  });
-
-  const context = React.useMemo(() => ({
-    get_email: () => {return state.email},
-    
-    logout: () => {dispatch({type: 'LOGOUT'})},
-    login_with_email: (email) => { dispatch({type: "SET_LOGIN_WITH_EMAIL", payload: email}) },
-    login_register: (email) => { dispatch({type: 'SET_LOGIN_REGISTER', payload: email})},
-  }));
 
   return (
     <div>
@@ -71,22 +74,24 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <Context.Provider value={context}>
-        <Header isLoggedIn={state.isLoggedIn}></Header>
+      <Header isLoggedIn={is_logged_in()}></Header>
 
-      </Context.Provider>
+      <NavHeader> </NavHeader>
+
+      {is_logged_in()?
+        <>
+
+          <Button type="header" callback={() => lobbyCallback()}>Create Lobby</Button>
+
+          <input type="number" value={lobbyCode} onChange={v => {setLobbyCode(v.target.value); }} className="caret-blue-800"/>
+
+          <Button type ="header" callback={() => lobbyJoinCallback()}>Join Lobby</Button>
+
+        </>
+
+        : null
+      }
 
     </div>
   )
-}
-
-function reducer(state, action){
-  switch(action.type){
-    case 'SET_LOGIN_WITH_COOKIE': return {...state, isLoggedIn: true, email: action.payload}
-    case 'SET_LOGIN_WITH_EMAIL': return {...state, isLoggedIn: true, email: action.payload}
-    case 'SET_LOGIN_REGISTER': return {...state, isLoggedIn: true, email: action.payload}
-    case 'LOGOUT': return {...state, isLoggedIn: false, email: null}
-
-    default: return state;
-  }
 }

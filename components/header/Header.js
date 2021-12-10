@@ -1,4 +1,6 @@
-import React from 'react';
+import router, { useRouter } from 'next/router';
+import React, { useRef } from 'react';
+import { io } from 'socket.io-client';
 import Context from '../../res/Context';
 import Button from '../usefull/Button';
 
@@ -6,21 +8,26 @@ export default function Header({isLoggedIn}){
     const [loginModalOpen, setLoginModalOpen] = React.useState(false);
     const [registerModalOpen, setRegisterModalOpen] = React.useState(false);
 
-    const {logout, login_with_email, login_register, get_email} = React.useContext(Context);
+    const {logout, login_with_email, login_register, get_email, set_socket} = React.useContext(Context);
 
     return(
-        <div className="flex h-16 bg-gray-300 justify-between p-4">
+        <div className="flex h-16 container m-auto justify-between p-4">
             <Logo></Logo>
             
-            {isLoggedIn? 
-                <Profile get_email={get_email} logout={logout}/>
-                :
-                <LoginRegister setLoginModalOpen={setLoginModalOpen} setRegisterModalOpen={setRegisterModalOpen}/>
+            {isLoggedIn != null? 
+                (isLoggedIn? 
+                    <Profile get_email={get_email} logout={logout}/>
+                    :
+                    <LoginRegister setLoginModalOpen={setLoginModalOpen} setRegisterModalOpen={setRegisterModalOpen}/>
+                )
+                : null
+                
             }
 
-            {loginModalOpen? <LoginModal setModalOpen={setLoginModalOpen} loginCallback={login_with_email} /> : null}
+
+            {loginModalOpen? <LoginModal socketCallback={set_socket} setModalOpen={setLoginModalOpen} loginCallback={login_with_email} /> : null}
  
-            {registerModalOpen? <RegisterModal setModalOpen={setRegisterModalOpen} registerCallback={login_register} /> : null}
+            {registerModalOpen? <RegisterModal socketCallback={set_socket} setModalOpen={setRegisterModalOpen} registerCallback={login_register} /> : null}
 
         </div>
     )
@@ -43,6 +50,8 @@ const LoginRegister = ({setLoginModalOpen, setRegisterModalOpen}) => {
 }
 
 const Profile = ({get_email, logout}) => {
+    const router = useRouter();
+    
     const doLogout = async() => {
         let email = get_email();
 
@@ -59,6 +68,7 @@ const Profile = ({get_email, logout}) => {
         response = await response.json();
 
         if(response.code == 200){
+            router.push('/');
             logout();
         }
     }
@@ -72,7 +82,7 @@ const Profile = ({get_email, logout}) => {
     )
 }
 
-const LoginModal = ({setModalOpen, loginCallback}) => {
+const LoginModal = ({socketCallback, setModalOpen, loginCallback}) => {
     const [errorMessage, setErrorMessage] = React.useState("");
     
     const [state, setState] = React.useState({
@@ -124,6 +134,13 @@ const LoginModal = ({setModalOpen, loginCallback}) => {
         if(response.code == 200){
             loginCallback(response.email);
             setModalOpen(false);
+
+            //Try to connect to the Socket
+            fetch('/api/auth/userSocket').finally(() => {
+                const socket = io();
+                socketCallback(socket);
+            })
+
         } else {
             setErrorMessage("E-Mail / Password do not match");
 
@@ -141,12 +158,11 @@ const LoginModal = ({setModalOpen, loginCallback}) => {
             className="w-screen h-screen bg-black bg-opacity-40 absolute top-0 left-0 flex justify-center items-center"
             onClick={(event) => modalClickHandler(event)}
         >
-            <div className="bg-white rounded-md" id="LoginModal">
+            <div className="bg-white rounded-md animate-popIn" id="LoginModal">
 
                 <div className="w-full bg-red-700 text-center text-white py-1 rounded-t-md shadow-md">
                     <p className="font-bold text-2xl pb-2">Login</p>
                 </div>
-
                 <div className="p-4">
                     <div className="mb-4">
                         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="headerLoginUsername">Username</label>
@@ -182,7 +198,7 @@ const LoginModal = ({setModalOpen, loginCallback}) => {
     )
 }
 
-const RegisterModal = ({setModalOpen, registerCallback, isFullOpen}) => {
+const RegisterModal = ({socketCallback, setModalOpen, registerCallback, isFullOpen}) => {
     const modalClickHandler = (event) => {
         const LoginModal = document.getElementById("RegisterModal");
 
@@ -254,6 +270,12 @@ const RegisterModal = ({setModalOpen, registerCallback, isFullOpen}) => {
             if(response.code == 200){
                 registerCallback(response.email);
                 setModalOpen(false);
+
+                //Try to connect to the socket
+                fetch('/api/auth/userSocket').finally(() => {
+                    const socket = io();
+                    socketCallback(socket);
+                })
             } else {
                 setErrorMessage(response.msg);
             }
