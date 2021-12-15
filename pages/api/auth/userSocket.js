@@ -17,12 +17,68 @@ const ioHandler = async(req, res) => {
 
             socket.data.u_id = u_id;
             socket.join(u_id);
+            
+            console.log("=======================");
+            console.log("Socket connected: " + socket.data.u_id.substr(0, 5));
 
             socket.data.friends = await getAllFriendSockets(io, u_id);          
             sendEventToAllFriends(socket, 'login');
+            
+            socket.on('get_all_friends_online_state', async (data, cb) => {
+                const allSockets = await io.fetchSockets();
+                const re = [];
 
-            console.log("Socket connected: " + socket.data.u_id);
+                for(let u_id of data){
+                    let isLoggedIn = false;
+                    let lobbyId = null
+                    for (let socket of allSockets){
+                        if(socket.data.u_id == u_id){
+                            isLoggedIn = true;
+                            lobbyId = socket.data.lobbyId;
+                        }
+                            
+                    }
 
+                    re.push({
+                        u_id: u_id,
+                        state: (isLoggedIn? 'login': 'logout'),
+                        location: (lobbyId != null)? 'In Lobby' : null
+                    });
+                }
+
+                cb(re);
+
+            });
+
+            socket.on('add_to_friends', friendId => {
+                console.log("Trying to add the friend socket")
+                getFriendSocket(io, friendId).then(s => {
+                    let notConnected = true;
+                    for(let friends of socket.data.friends){
+                        if(friends.data.u_id == s.data.u_id){
+                            notConnected = false;
+                        }
+                    }
+
+                    if(notConnected){
+                        socket.data.friends.push(s);
+                        console.log("added: " + s.data.u_id.substr(0, 5) + " to friendslist of: " + socket.data.u_id.substr(0, 5));
+                    }
+                });
+            })
+
+            socket.on('add_new_friend', async (friendId) => { 
+                let friendSocket = await getFriendSocket(friendId);
+                socket.data.friends.push(friendSocket);
+            });
+
+            socket.on("remove_friend", (friendId) => {
+                let friendSockets = socket.data.friends;
+
+                friendSockets = friendSockets.filter(fs => fs.data.u_id != friendId);
+                socket.data.friends = friendSockets;
+            });
+ 
             socket.on('message_to_friend', (message, friendId) => {
                 console.log("Sending Message: " + message + " to: " + friendId);
                 socket.to(friendId).emit('message_from_friend', message);
@@ -38,6 +94,9 @@ const ioHandler = async(req, res) => {
                 console.log("Socket joning Lobby: " + lobbyId);
                 socket.join(lobbyId);
                 socket.data.lobbyId = lobbyId;
+
+                sendEventToAllFriends(socket, 'In Lobby');
+                console.log("Socket Friends: " + socket.data.friends.length);
             })
 
             socket.on('leave_lobby', () => {
@@ -46,6 +105,8 @@ const ioHandler = async(req, res) => {
                     socket.leave(socket.data.lobbyId);
                     socket.data.lobbyId = null;
                 }
+
+                sendEventToAllFriends(socket, 'remove_location')
             });
 
             socket.on('logout', async () => {    
@@ -53,6 +114,7 @@ const ioHandler = async(req, res) => {
             });
 
             socket.on('disconnecting', () => {
+                console.log("Socket is about to disconnect");
                 sendEventToAllFriends(socket, 'logout');                
             })
             
@@ -69,18 +131,32 @@ const ioHandler = async(req, res) => {
     })
 }
 
+const getFriendSocket = async (io, friendId) => {
+    const allSockets = await io.fetchSockets();
+
+    for(let socket of allSockets){
+        if(socket.data.u_id == friendId){
+            return socket;
+        }
+    }
+}
+
 const getAllFriendSockets = async (io, userId) => {
     //Get all Friends
     const con = await connectDB(dbConfig).catch(e => {console.log(e) });
     let allFriends = await queryDB(con, "SELECT friends FROM `cc-games`.users WHERE u_id=\"" + userId + "\"").catch(e => { console.log(e) });
     allFriends = JSON.parse(allFriends[0].friends);
 
+    if(!allFriends || allFriends.length == 0){
+        return [];
+    }
+
     const allSockets = await io.fetchSockets();
     let returnArray = [];
 
     for(let friendObj of allFriends){
         for(let socket of allSockets){
-            if(socket.data.u_id == friendObj.u_id){
+            if(socket.data.u_id == friendObj){
                 returnArray.push(socket);
             }
         }
@@ -91,8 +167,11 @@ const getAllFriendSockets = async (io, userId) => {
 
 const sendEventToAllFriends = (socket, eventType) => {
     for(let friend of socket.data.friends){
+        console.log("SENDING " + eventType + " to Friend: " + friend.data.u_id);
         friend.emit('friend_state_change', eventType, socket.data.u_id);
     }
+
+    
 }
 
 

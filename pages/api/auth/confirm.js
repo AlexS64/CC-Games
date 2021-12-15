@@ -41,6 +41,8 @@ export default async function confirm(req, res){
             const update = await queryDB(con, "UPDATE `cc-games`.auth SET password = \"" + hashedPassword + "\" , session=\"" + sessionId + "\" , code = null WHERE email = \"" + email + "\"").catch(e => {console.log(e)});
             const insert = await queryDB(con, "INSERT INTO `cc-games`.users (email, u_id) VALUES (\"" + email + "\" ,  \"" + userId + "\")").catch(e => {console.log(e)});
             
+            con.end();
+
             if(update.affectedRows == 1 && insert.affectedRows == 1){
                 
                 

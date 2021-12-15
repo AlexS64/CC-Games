@@ -44,6 +44,7 @@ export default async function joinLobby(req, res){
 
                 //Update DB
                 const update = await queryDB(con, "UPDATE `cc-games`.lobbys SET users=\'" + JSON.stringify(users) + "\' WHERE lobbyCode = \"" + lobbyCode + "\"" ).catch(e => {console.log(e)});
+                con.end();
 
                 if(update.affectedRows == 1){
                     

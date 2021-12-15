@@ -34,6 +34,8 @@ export default async function login(req, res) {
                 const sessionId = await createSessionId(con);
                 const update = await queryDB(con, "UPDATE `cc-games`.auth SET session=\"" + sessionId + "\" WHERE email=\"" + email + "\"").catch(e => {console.log(e)});
                 let userId = await queryDB(con, "SELECT u_id FROM `cc-games`.users WHERE email=\"" + email + "\"").catch(e => {console.log(e)});
+                con.end();
+
                 userId = userId[0].u_id;
 
                 res.setHeader('Set-Cookie', [

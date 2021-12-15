@@ -37,7 +37,7 @@ export default async function removeFriend(req, res){
             allFriends = allFriends.filter(friendObj => friendObj.u_id != friend_id);
 
             const update = await queryDB(con, "UPDATE `cc-games`.users SET friends=\"" + JSON.stringify(allFriends) + "\" WHERE u_id=\"" + u_id + "\"").catch(e => { console.log(e) });
-
+            con.end();
             if(update.affectedRows == 1){
                 res.status(200).json({
                     code: 200,

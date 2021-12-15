@@ -21,14 +21,12 @@ import React from 'react';
 import Context from '../res/Context';
 import Button from '../components/usefull/Button';
 import { io } from 'socket.io-client';
+import FriendViewer from '../components/friends/FriendViewer';
 
 export default function Home() {
   const router = useRouter();
   
   const { logout, login_with_email, is_logged_in, set_socket } = React.useContext(Context);
-
-  
-
 
   const lobbyCallback = async () => {
     let response = await fetch('/api/lobby/createLobby');
@@ -86,6 +84,8 @@ export default function Home() {
           <input type="number" value={lobbyCode} onChange={v => {setLobbyCode(v.target.value); }} className="caret-blue-800"/>
 
           <Button type ="header" callback={() => lobbyJoinCallback()}>Join Lobby</Button>
+
+          <FriendViewer />
 
         </>
 

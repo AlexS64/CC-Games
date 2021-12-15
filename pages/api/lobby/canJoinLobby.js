@@ -23,6 +23,7 @@ export default async function canJoinLobby(req, res) {
 
         const con = await connectDB(dbConfig).catch(e => { console.log(e) });
         const query = await queryDB(con, "SELECT * FROM `cc-games`.lobbys WHERE lobbyCode=\"" + lobbyCode + "\"").catch(e => { console.log(e) });
+        con.end();
 
         if(query.length == 1){
             if(query[0].privacy == 0){

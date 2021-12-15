@@ -32,11 +32,11 @@ function MyApp({ Component, pageProps }) {
       }
     }
 
-    if(cookies.u_id){
+    //if(cookies.u_id){
       validateUid();
-    } else {
-      dispatch({type: 'LOGOUT'});
-    }
+    //} else {
+    //  dispatch({type: 'LOGOUT'});
+    //}
   }, []);
 
   const [state, dispatch] = React.useReducer(reducer, {
@@ -85,12 +85,7 @@ function reducer(state, action){
 }
 
 function applySocketCallbacks(socket){
-  socket.on('friend_state_change', (eventType, userId) => {
-    console.log("Friend: " + userId.substr(0, 5) + " changed to: " + eventType);
-  })
-
-
-
+  
   socket.on('message_from_friend', (message) => {
     alert("Got a new Message: " + message);
   })

@@ -41,6 +41,8 @@ export default async function logout(req, res){
     const con = await connectDB(dbConfig).catch(e => { console.log(e)});
     const update = await queryDB(con, "UPDATE `cc-games`.auth SET session = null, lastLogin = null WHERE email=\"" + isValid + "\"").catch(e => { console.log(e)})
     
+    con.end();
+
     if(update.affectedRows == 1){
         //Remove Cookie
         res.setHeader('Set-Cookie', [

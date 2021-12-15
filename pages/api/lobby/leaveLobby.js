@@ -64,6 +64,7 @@ export default async function leaveLobby(req, res){
             }
 
             const update = await queryDB(con, "UPDATE `cc-games`.lobbys SET users=\'" + JSON.stringify(users) + "\' WHERE lobbyCode=\"" + lobbyCode + "\"").catch(e => {console.log(e)});
+            con.end();
 
             if(update.affectedRows == 1){
                 res.status(200).json({

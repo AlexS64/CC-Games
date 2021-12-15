@@ -31,6 +31,7 @@ export default async function getSingleFriendData(req, res){
 
         const con = await connectDB(dbConfig).catch(e => { console.log(e) });
         const query = await queryDB(con, "SELECT * FROM `cc-games`.users WHERE u_id=\"" + friend_id + "\"").catch(e => { console.log(e) });
+        con.end();
 
         if(query.length == 1){
             res.status(200).json({

@@ -23,6 +23,8 @@ export default async function forgot(req, res){
             const code = generateCode();
             const update = await queryDB(con, "UPDATE `cc-games`.auth SET password=null, lastLogin=null, code=\"" + code + "\" WHERE email=\"" + email + "\"").catch(e => {console.log(e)});
         
+            con.end()
+
             if(update.affectedRows == 1){
                 res.status(200).json({
                     code: 200,

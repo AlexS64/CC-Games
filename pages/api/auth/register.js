@@ -22,7 +22,8 @@ export default async function register(req, res) {
             let code = generateCode();
 
             const insert = await queryDB(con, "INSERT INTO `cc-games`.auth (email, code, lastLogin) VALUES ('" + email + "', '" + code + "', null)").catch(e => { console.log(e)});
-            
+            con.end();
+
             if(insert.affectedRows == 1){
                 res.status(200).json({
                     code: 200,

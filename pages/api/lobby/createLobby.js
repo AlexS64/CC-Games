@@ -42,6 +42,7 @@ export default async function createLobby(req, res) {
     let privacy = 0;
 
     const insert = await queryDB(con, "INSERT INTO `cc-games`.lobbys (lobbyId, lobbyCreator, lobbyLeader, lobbyCode, privacy, users) VALUES ('" + lobbyId + "', '" + u_id + "', '" + u_id + "' , '" + lobbyCode + "', '" + privacy + "', '" + JSON.stringify(users) + "' )").catch(e => { console.log(e)});
+    con.end();
 
     if(insert.affectedRows == 1){
         res.status(200).json({

@@ -26,8 +26,8 @@ export default async function addFriend(req, res){
             });
         }
         
-        const con = connectDB(dbConfig).catch(e => { console.log(e) });
-        const query = queryDB(con, "SELECT * FROM `cc-games`.users WHERE u_id=\"" + u_id + "\"").catch(e => { console.log(e) });
+        const con = await connectDB(dbConfig).catch(e => { console.log(e) });
+        const query = await queryDB(con, "SELECT * FROM `cc-games`.users WHERE u_id=\"" + u_id + "\"").catch(e => { console.log(e) });
 
         //Update Friends Data
         let allFriends = JSON.parse(query[0].friends);
@@ -44,16 +44,21 @@ export default async function addFriend(req, res){
         }
         
         //Add a new Friend Object to the list
-        allFriends.push({
-            u_id: friend_id
-        });
+        allFriends.push(friend_id);
 
-        const update = queryDB(con, "UPDAE `cc-games`.users SET friends=\"" + JSON.stringify(allFriends) + "\" WHERE u_id=\"" + u_id + "\"").catch(e => { console.log(e) });
+        const update = await queryDB(con, "UPDATE `cc-games`.users SET friends=\'" + JSON.stringify(allFriends) + "\' WHERE u_id=\"" + u_id + "\"").catch(e => { console.log(e) });
+        const query2 = await queryDB(con, "SELECT * FROM `cc-games`.users WHERE u_id=\"" + friend_id + "\"").catch(e => { console.log(e) });
+        con.end();
 
         if(update.affectedRows == 1){
             res.status(200).json({
                 code: 200,
-                msg: StatusCodeMsg(200)
+                msg: StatusCodeMsg(200),
+                data: {
+                    username: query2[0].username,
+                    friends: JSON.parse(query2[0].friends),
+                    u_id: friend_id
+                }
             });
             return;
         } 
