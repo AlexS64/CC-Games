@@ -39,7 +39,7 @@ export default async function leaveLobby(req, res){
             let index = users.allUsers.indexOf(u_id);
 
             if(index == -1)
-                console.log(allUsers);
+                console.log(users.allUsers);
             else
                 users.allUsers.splice(index, 1)
             

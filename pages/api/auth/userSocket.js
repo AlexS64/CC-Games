@@ -12,6 +12,7 @@ const ioHandler = async(req, res) => {
         const io = new Server(res.socket.server);
 
         io.on('connection', async socket => {
+            // #region Init
             const cookies = cookie.parse(socket.request.headers.cookie || "");
             const { u_id } = cookies;
 
@@ -23,7 +24,8 @@ const ioHandler = async(req, res) => {
 
             socket.data.friends = await getAllFriendSockets(io, u_id);          
             sendEventToAllFriends(socket, 'login');
-            
+            // #endregion
+
             socket.on('get_all_friends_online_state', async (data, cb) => {
                 const allSockets = await io.fetchSockets();
                 const re = [];
@@ -131,6 +133,8 @@ const ioHandler = async(req, res) => {
     })
 }
 
+
+// #region Friend Logic
 const getFriendSocket = async (io, friendId) => {
     const allSockets = await io.fetchSockets();
 
@@ -167,12 +171,13 @@ const getAllFriendSockets = async (io, userId) => {
 
 const sendEventToAllFriends = (socket, eventType) => {
     for(let friend of socket.data.friends){
-        console.log("SENDING " + eventType + " to Friend: " + friend.data.u_id);
+        console.log("SENDING " + eventType + " to Friend: " + friend.data.u_id.substr(0, 5));
         friend.emit('friend_state_change', eventType, socket.data.u_id);
     }
 
     
 }
+// #endregion
 
 
 export default ioHandler;

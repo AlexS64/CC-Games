@@ -9,7 +9,7 @@ export default function Lobby(){
     const router = useRouter()
     const { lobbyId } = router.query;
     
-    const { is_logged_in, get_socket } = React.useContext(Context);
+    const { is_logged_in, get_socket, join_lobby} = React.useContext(Context);
 
     React.useEffect(() => {
         const isAllowedToJoin = async() => {
@@ -30,6 +30,7 @@ export default function Lobby(){
                 router.push('/');
                 return;
             } else {
+                join_lobby(lobbyId);
                 const socket = get_socket();
                 socket.emit('join_lobby', lobbyId);
             }
@@ -45,6 +46,7 @@ export default function Lobby(){
 
     }, [lobbyId, get_socket(), is_logged_in()])
 
+    /*
     React.useEffect(() => {
         const handleChange = (url) => {
             const socket = get_socket();
@@ -62,22 +64,18 @@ export default function Lobby(){
         }
 
     }, [router])
+    */
 
-    const[text, setText] = React.useState("");
-
-    const buttonCallBack = () => {
-        console.log("Button Callback");
-    }
+    
 
     return(
-        <div>
+        <div className='bg-blue-300 h-screen w-screen'>
             <Header isLoggedIn={is_logged_in()} />
 
-            <h1>Lobby { lobbyId }</h1>
+            
 
-            <Button type="header" callback={buttonCallBack}>Hello</Button>
 
-            <input type="text" value={text} onChange={(v) => setText(v.target.value)} ></input>
+
         </div>
     )
 }

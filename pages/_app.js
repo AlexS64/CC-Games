@@ -21,29 +21,44 @@ function MyApp({ Component, pageProps }) {
       } else {
         dispatch({type: 'SET_LOGIN_WITH_EMAIL', payload: response.email});
       
+        //Get the last state of the user
+        let lastState = await fetch('/api/auth/getLastState');
+        lastState = await lastState.json();
+
+        if(lastState.code == 200){
+          if(lastState.lastState == "in_lobby"){
+            dispatch({type: "JOIN_LOBBY", payload: lastState.data});
+          }
+        }
+
         //Try to reconnect to the socket
         fetch('/api/auth/userSocket').finally(() => {
           const socket = io();
           applySocketCallbacks(socket);
           dispatch({type: 'SET_SOCKET', payload: socket});
 
-          console.log("Auto Reconnect Succesfull");
+          if(lastState.code == 200 && lastState.lastState == "in_lobby"){
+            socket.emit("join_lobby", lastState.data);
+          }
         })
       }
     }
 
     //if(cookies.u_id){
-      validateUid();
+    validateUid();
     //} else {
     //  dispatch({type: 'LOGOUT'});
     //}
   }, []);
 
+  //Keep track of the State of the Application
   const [state, dispatch] = React.useReducer(reducer, {
     //Initial State
     isLoggedIn: null, //Null on Init. After Init true or false
     email: null,
     socket: null, // The socket User-Socket obj
+
+    lobbyId: null, //Null if not in lobby, otherwise lobbyCode
 
     //Special parameters
   });
@@ -58,7 +73,11 @@ function MyApp({ Component, pageProps }) {
     is_logged_in: () => {return state.isLoggedIn},
 
     set_socket: (socket) => { applySocketCallbacks(socket); dispatch({type:'SET_SOCKET', payload: socket}) },
-    get_socket: () => { return state.socket }
+    get_socket: () => { return state.socket },
+
+    join_lobby: (lobbyId) => { dispatch({type: "JOIN_LOBBY",  payload: lobbyId}) },
+    leave_lobby: () => { dispatch({type: "LEAVE_LOBBY"})},
+    is_in_lobby: () => { return state.lobbyId },
   
   }));
 
@@ -80,6 +99,9 @@ function reducer(state, action){
 
     case 'SET_SOCKET': return {...state, socket: action.payload}
 
+    case 'JOIN_LOBBY': return { ...state, lobbyId: action.payload}
+    case 'LEAVE_LOBBY': return { ...state, lobbyId: null}
+
     default: return state;
   }
 }
@@ -96,3 +118,20 @@ function applySocketCallbacks(socket){
 }
 
 export default MyApp
+
+
+/*
+Structure of this whole thing:
+
+Step 1: Call ANY Url:
+  -> API-Call: validateSession.
+    -> Fail: User Login is not valid anymore.
+      - Remove u_id & s_id Cookie
+      - Remove u_id from lobbys and games
+      
+    -> Success: User Login is valid
+      - API-Call: getLastState
+        -> Fail: Server Error
+        -> Success: Get last state of the User (in Lobby / in Game, both?)
+
+*/

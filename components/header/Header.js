@@ -8,11 +8,23 @@ export default function Header({isLoggedIn}){
     const [loginModalOpen, setLoginModalOpen] = React.useState(false);
     const [registerModalOpen, setRegisterModalOpen] = React.useState(false);
 
-    const {logout, login_with_email, login_register, get_email, set_socket} = React.useContext(Context);
+    const {logout, login_with_email, login_register, get_email, set_socket, is_in_lobby, leave_lobby} = React.useContext(Context);
+
+    const router = useRouter();
 
     return(
-        <div className="flex h-16 container m-auto justify-between p-4">
+        <div 
+            className={"flex h-16 container m-auto justify-between p-4 " + ((is_in_lobby() != null)? "border-2 border-red-400 border-t-0 rounded-md rounded-t-none drop-shadow-lg from-purple-700 to-blue-500 bg-gradient-to-t cursor-pointer" : "")}
+            onClick={() => {(is_in_lobby())? router.push('/lobby/' + is_in_lobby()) : null}}
+            >
+            
+            
             <Logo></Logo>
+
+            {(is_in_lobby() != null)? 
+                <LobbyView lobbyCode={is_in_lobby()} leaveLobby={leave_lobby} />
+                : null
+            }
             
             {isLoggedIn != null? 
                 (isLoggedIn? 
@@ -36,6 +48,43 @@ export default function Header({isLoggedIn}){
 const Logo = () => {
     return (
         <p>CC-Games</p>
+    )
+}
+
+const LobbyView = ({lobbyCode, leaveLobby}) => {
+    
+    const {get_socket} = React.useContext(Context);
+    const router = useRouter();
+
+
+    const leaveLobbyCallback = async() => {
+        let response = await fetch('/api/lobby/leaveLobby', {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                lobbyCode: lobbyCode
+            })
+        });
+
+        response = await response.json();
+
+        if(response.code == 200){
+            get_socket().emit('leave_lobby');
+            leaveLobby();
+            router.push("/");
+        }
+    }
+
+    return(
+        <div className='flex'>
+            <p>In Lobby: {lobbyCode}</p>
+            {(router.route.includes("lobby"))?
+                <Button type="header" callback={() => leaveLobbyCallback()} >Leave</Button>
+                : null
+            }
+        </div>
     )
 }
 

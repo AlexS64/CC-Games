@@ -2,7 +2,7 @@
 export default function NavHeader(){
 
     const menuPoints = ["Start", "Games", "Lobbys", "High-Scores", "Friends"];
-    const menuPointsElements = menuPoints.map((name) => <MenuItem name={name}></MenuItem>)
+    const menuPointsElements = menuPoints.map((name, index) => <MenuItem name={name} key={index}></MenuItem>)
 
     return (
         <> 
@@ -26,4 +26,3 @@ const MenuItem = ({name}) => {
         </div>
     )
 }
-

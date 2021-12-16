@@ -14,6 +14,7 @@ export default function FriendViewer(){
 
     const {get_socket} = React.useContext(Context);
 
+
     React.useEffect(() => {
     
         if(socket == null && get_socket() != null && allFriendsData != null){
@@ -132,36 +133,24 @@ const FriendView = ({data}) => {
             {
                 Object.keys(data).map((key, index) => {
                     return(
-                        <Friend username={data[key].username} logState={data[key].logState} location={data[key].location}/>
+                        <Friend username={data[key].username} logState={data[key].logState} location={data[key].location} key={index}/>
                     )
                 })
             }    
-
-
         </div>
     )
 }
-
-/*
-
-{
-    Object.keys(data).map((key, index) => {
-        return(
-            <div key={index}>
-                <p className={"font-bold " + (data[key].logState == "login" ? "text-green-500" : "text-white")} >{data[key].username}</p>
-            </div>
-        )
-    })
-}
-
-
-*/
 
 const Friend = (props) => {
     return(
         <div className='flex-1 items-center flex gap-2 bg-white p-2 border-2 border-gray-300 w-52 max-w-xs rounded-md cursor-pointer'>
             <div className='relative'>
-                <div className='rounded-full bg-gray-500 w-10 h-10'></div>
+                <div className='rounded-full bg-gray-300 w-10 h-10'>
+                    <img 
+                        src={("https://avatars.dicebear.com/api/human/" + props.username.replace(" ", "") + ".svg")} 
+                        className='scale-75'
+                    ></img>
+                </div>
                 {props.logState=='login'? <div className='rounded-full w-4 h-4 bg-green-400 absolute right-0 top-6'></div> : null}
             </div>
 
@@ -169,7 +158,6 @@ const Friend = (props) => {
                 <p className='font-bold text-lg overflow-hidden whitespace-nowrap'>{props.username}</p>
                 {props.location? <p className='-mt-2 text-sm text-gray-500'>{props.location}</p> : null}
             </div>
-
         </div>
     )
 }
